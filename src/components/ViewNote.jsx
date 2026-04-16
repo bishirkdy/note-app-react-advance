@@ -1,4 +1,4 @@
-import { CopyX, FilePenLine, HeartPlus, Pin, PinOff } from "lucide-react";
+import { ArchiveRestore, ArchiveX, CopyX, FilePenLineIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useFetch } from "../context/FeatchContext";
 import { api } from "../services/dbConfig";
@@ -8,27 +8,51 @@ const ViewNote = ({ onClick }) => {
   const { notes, fetchNotes } = useFetch();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("date");
+  const [isAchieve, setIsAchieve] = useState(false);
+  const [showArchivePopup, setShowArchivePopup] = useState(false);
 
   useEffect(() => {
     fetchNotes();
   }, []);
-
-  async function handleDelete(id) {
+  useEffect(() => {
+    const anyArchive = notes.some((d) => d.archived);
+    setIsAchieve(anyArchive);
+  }, [notes]);
+  async function handleDelete(e, id) {
     try {
       await api.delete(`/notes/${id}`);
       toast.success("Data deleted successfully");
-      // fetchNotes();
     } catch (error) {
       toast.error("Failed to delete");
     }
   }
+  const archivedData = notes.filter((d) => d.archived);
+  async function unarchiveHandler(id) {
+    try {
+      await api.patch(`/notes/${id}`, { archived: false });
+      toast.success("Unarchived note");
+    } catch (error) {
+      toast.error("Failed to unarchive");
+    }
+  }
+  async function archiveHandler(id) {
+    try {
+      await api.patch(`/notes/${id}`, { archived: true });
+      toast.success("Archived note");
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
+  }
 
-  const filteredData = notes.filter(
-    (d) =>
-      d.title.toLowerCase().includes(search.toLowerCase()) ||
-      d.category.toLowerCase().includes(search.toLowerCase()) ||
-      d.content.toLowerCase().includes(search.toLowerCase()),
-  );
+  const searchText = search.toLowerCase();
+  const filteredData = notes.filter((d) => {
+    if (d.archived) return false;
+    return (
+      d.title.toLowerCase().includes(searchText) ||
+      d.category.toLowerCase().includes(searchText) ||
+      d.content.toLowerCase().includes(searchText)
+    );
+  });
   const sortedData = [...filteredData].sort((a, b) => {
     if (sortBy === "title") return a.title.localeCompare(b.title);
     if (sortBy === "color") return a.color > b.color ? 1 : -1;
@@ -58,7 +82,14 @@ const ViewNote = ({ onClick }) => {
           <option value="color">Color</option>
         </select>
       </div>
-
+      {isAchieve && (
+        <button
+          onClick={() => setShowArchivePopup(true)}
+          className="w-full bg-black/90 cursor-pointer rounded-lg mb-2 p-2 text-white"
+        >
+          Archive items
+        </button>
+      )}
       {sortedData.length > 0 ? (
         <div className="grid gap-4">
           {sortedData.map((d, i) => (
@@ -72,13 +103,17 @@ const ViewNote = ({ onClick }) => {
                   {d.title.split(0, 20)}
                 </h2>
                 <div className="flex flex-row items-center gap-2 bg-white p-1 rounded-lg">
-                  <FilePenLine
+                  <ArchiveRestore
+                    onClick={() => archiveHandler(d.id)}
+                    className="w-4 hover:scale-105 cursor-pointer"
+                  />
+                  <FilePenLineIcon
                     onClick={() => onClick(d.id)}
                     className="w-4 hover:scale-105 cursor-pointer"
                   />
                   <CopyX
                     className="text-red-500 w-4 hover:scale-105 cursor-pointer"
-                    onClick={() => handleDelete(d.id)}
+                    onClick={(e) => handleDelete(e, d.id)}
                   />
                 </div>
               </div>
@@ -125,6 +160,46 @@ const ViewNote = ({ onClick }) => {
         <p className="text-center text-(--color-forth) mt-10">
           No notes available
         </p>
+      )}
+      {showArchivePopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white w-[90%] max-w-xl p-5 rounded-xl shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Archived Notes</h2>
+              <button
+                onClick={() => setShowArchivePopup(false)}
+                className="text-red-500 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            {archivedData.length > 0 ? (
+              <div className="flex flex-col gap-3 max-h-100 overflow-y-auto">
+                {archivedData.map((d) => (
+                  <div
+                    key={d.id}
+                    className="p-3 rounded-lg border flex justify-between items-center"
+                  >
+                    <div>
+                      <h3 className="font-semibold">{d.title}</h3>
+                      <p className="text-sm text-gray-600">{d.content}</p>
+                    </div>
+
+                    <button
+                      onClick={() => unarchiveHandler(d.id)}
+                      className="bg-green-500 cursor-pointer text-white px-3 py-1 rounded"
+                    >
+                      <ArchiveX />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>No archived notes</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
