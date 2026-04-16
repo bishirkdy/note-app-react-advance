@@ -1,0 +1,15 @@
+{
+  "notes": [
+    {
+      "title": "dfe",
+      "content": "fef",
+      "category": "",
+      "color": "#003049",
+      "tags": [],
+      "createdAt": 1776329921942,
+      "archived": false,
+      "id": "A01sR96tuEA"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
